@@ -11,6 +11,76 @@ window.onload = function() {
     const videoContainer = document.getElementById('videoContainer');
     const relatedListContainer = document.getElementById('relatedListContainer');
 
+    // YouTube Player API 스크립트 동적 로딩
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    let player;
+    let currentVideoUrl;
+    window.onYouTubeIframeAPIReady = function() {
+        player = new YT.Player('videoContainer', {
+            height: '315',
+            width: '100%',
+            events: {
+                'onReady': onPlayerReady,
+                'onStateChange': onPlayerStateChange
+            }
+        });
+    };
+    function onPlayerReady(event) {
+        // 초기 영상 설정
+        const firstBroadcaster = broadcasters[0];
+        loadVideo(firstBroadcaster);
+      }
+
+    function onPlayerStateChange(event) {
+    if (event.data === YT.PlayerState.PLAYING) {
+        // 재생 중인 영상의 타임스탬프 가져오기
+        const currentTime = player.getCurrentTime();
+        updateRelatedList(currentTime);
+    }
+    }
+    
+    function loadVideo(broadcaster) {
+        // 영상 로드
+        player.loadVideoById(getVideoId(broadcaster.videoUrl));
+        currentVideoUrl = broadcaster.videoUrl;
+
+        // 연관된 영상 목록 갱신
+        updateRelatedList(broadcaster.timestamp);
+      }
+
+      function updateRelatedList(currentTimestamp) {
+        relatedListContainer.innerHTML = ''; // 기존 목록 초기화
+
+        broadcasters.forEach(relatedBroadcaster => {
+          if (currentVideoUrl !== relatedBroadcaster.videoUrl) {
+            const listItem = document.createElement('li');
+            listItem.innerHTML = `<strong>${relatedBroadcaster.name}</strong> - <a href="javascript:void(0);" onclick="syncVideo('${relatedBroadcaster.videoUrl}', '${relatedBroadcaster.name}', ${relatedBroadcaster.timestamp})">Watch</a> at ${relatedBroadcaster.timestamp}s`;
+
+            // 현재 재생 중인 영상의 타임스탬프와 동일하면 강조 표시
+            if (relatedBroadcaster.timestamp === currentTimestamp) {
+              listItem.style.fontWeight = 'bold';
+            }
+
+            relatedListContainer.appendChild(listItem);
+          }
+        });
+      }
+
+      // 동기화된 영상으로 전환하는 함수
+      window.syncVideo = function(videoUrl, name, timestamp) {
+        const broadcaster = { name, videoUrl, timestamp };
+        loadVideo(broadcaster);
+      };
+
+      // YouTube Video URL에서 Video ID를 추출하는 함수
+      function getVideoId(videoUrl) {
+        const videoIdMatch = videoUrl.match(/[?&]v=([^?&]+)/);
+        return (videoIdMatch && videoIdMatch[1]) ? videoIdMatch[1] : '';
+      }
     // 첫 번째 방송인의 영상만 초기로드
     const firstBroadcaster = broadcasters[0];
     createVideo(firstBroadcaster);

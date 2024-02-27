@@ -1,106 +1,241 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>다양한 시점의 방송 보기</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f0f0f0;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Synced Video Player with Related List</title>
+  <style>
+    #videoContainer {
+      /* width: 70%; */
+      float: left;
+    }
 
-        header {
-            background-color: #333;
-            color: white;
-            padding: 1em;
-            text-align: center;
-        }
+    #relatedListContainer {
+      float: left;
+      box-sizing: border-box;
+    }
 
-        main {
-            padding: 20px;
-        }
-        footer {
-            background-color: #333;
-            color: white;
-            text-align: center;
-            padding: 1em;
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-        }
-        #videoContainer {
-            width: 70%;
-            float: left;
-        }
+    .videoFrame {
+      position: relative;
+      padding-bottom: 56.25%; /* 16:9 aspect ratio */
+      overflow: hidden;
+    }
 
-        #relatedListContainer {
-            width: 30%;
-            float: left;
-            padding-left: 20px;
-            box-sizing: border-box;
-        }
+    .videoFrame iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
 
-        .videoFrame {
-        position: relative;
-        padding-bottom: 56.25%; /* 16:9 aspect ratio */
-        overflow: hidden;
-        }
-
-        .videoFrame iframe {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        }
-    </style>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha512-nzvsy5+U8NeAtZZFlCgTRfW2UbM99zVhEXVMBb34c3CfuADv+AxAs9t6fJt/1tETN8NtL4dN3yvjK1VO9UOk+g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-
-    <style>
     #relatedListContainer ul {
-    list-style: none;
-    padding: 0;
+      list-style: none;
+      padding: 0;
     }
 
     #relatedListContainer li {
-    margin-bottom: 15px;
-    display: flex;
-    align-items: center;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
     }
 
     .fa-youtube {
-    font-size: 24px;
-    margin-right: 10px;
+      font-size: 24px;
+      margin-right: 10px;
     }
 
     #relatedListContainer a {
-    text-decoration: none;
-    color: #333;
-    transition: color 0.3s;
+      text-decoration: none;
+      color: #333;
+      transition: color 0.3s;
     }
 
     #relatedListContainer a:hover {
-    color: #007bff;
+      color: #007bff;
     }
-</style>
+    #videoContainerGrid{
+        display: grid;
+        grid-template-columns: repeat(2,1fr);
+        grid-template-rows: repeat(2,1fr);
+
+    }
+    #mainContentGrid{
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        grid-template-rows: 1fr;
+    }
+  </style>
 </head>
 <body>
-    <header>
-        <h1>다양한 시점의 방송 보기</h1>
-    </header>
-    <main>
-        <div id="videoContainer"></div>
+    <div id="mainContentGrid">
+        <div id="videoContainerGrid">
+            <div id="videoContainer"></div>
+        </div>
         <div id="relatedListContainer"></div>
-    </main>
-    <footer>
-        <p>&copy; 2024 다양한 시점의 방송 보기</p>
-    </footer>
+    </div>
+    <script>
+    const broadcasters = [
 
-    <script src="index.js">
+        // { name: '머독', videoUrl: 'https://www.youtube.com/embed/RGzhwpmpUak?si=OOtj8L_Ll8tB8m1d', startTS: "2024-01-09T11:06:22+00:00", timestamp: 1378 },
+        // { name: '사과몽', videoUrl: 'https://www.youtube.com/embed/FHLT1xg9CiU?si=o_GA9QuBGln15KFK', startTS: "2024-01-09T11:52:09+00:00", timestamp: 4125 },
         
+        { name: '침착맨', videoUrl: 'https://www.youtube.com/embed/5ClP7YCZEFg?si=HZwCvfllKImrCsSx', startTS: "2024-02-12T10:28:58+00:00", timestamp: 746 },
+        { name: '다주', videoUrl: 'https://www.youtube.com/embed/PFBYM4xO6G0?si=bqSYNRodyFPT5R_n', startTS: "2024-02-12T13:30:14+00:00", timestamp: 5062 },
+        // { name: '서새봄', videoUrl: 'https://www.youtube.com/embed/PaSyHk5QI5Y?si=ZryZkz9htA31AVFN', startTS: "2024-02-12T12:28:58+00:00", timestamp: 3895}
+    // 추가 방송인 및 데이터
+    ];
+
+    window.onload = function() {
+        const videoContainer = document.getElementById('videoContainer');
+        const relatedListContainer = document.getElementById('relatedListContainer');
+
+        // YouTube Player API 스크립트 동적 로딩
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        let player;
+        let curVideoUrl;
+        let curVideoStartTS;
+
+        window.onYouTubeIframeAPIReady = function() {
+            player = new YT.Player('videoContainer', {
+                height: '315',
+                width: '100%',
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                },
+                controls: 0
+            });
+        };
+        
+        let logDiv = document.createElement("div");
+        document.body.appendChild(logDiv)
+        function DebugLog(text){
+            // return;
+            span = document.createElement("div");
+            span.innerHTML = text
+            logDiv.appendChild(span);
+        }
+
+        function onPlayerReady(event) {
+            // 초기 영상 설정
+            const firstBroadcaster = broadcasters[0];
+
+            curVideoUrl = firstBroadcaster.videoUrl;
+            curVideoStartTS = firstBroadcaster.startTS;
+            loadVideo(
+                firstBroadcaster.videoUrl,
+                firstBroadcaster.startTS,
+                firstBroadcaster.timestamp
+                );
+        }
+
+        function onPlayerStateChange(event) {
+            if (event.data === YT.PlayerState.PLAYING) {
+                // DebugLog("onPlayerStateChange()");
+                // 재생 중인 영상의 타임스탬프 가져오기
+                const currentTime = player.getCurrentTime();
+                updateRelatedList(currentTime);
+            }
+        }
+
+        window.loadVideo = function(videoUrl, startTS, timestamp) {
+            // 영상 로드
+            loadInfo = {
+                'videoId': getVideoId(videoUrl),
+                'startSeconds': timestamp,
+                // 'endSeconds': timestamp+3,
+            }
+            player.loadVideoById(loadInfo);
+            curVideoUrl = videoUrl;
+            curVideoStartTS = startTS;
+
+            // 연관된 영상 목록 갱신
+            // updateRelatedList(currentBroadcaster);
+        }
+
+        function updateRelatedList(currentBroadcaster) {
+            relatedListContainer.innerHTML = ''; // 기존 목록 초기화
+
+            broadcasters.forEach(relatedBroadcaster => {
+                if (curVideoUrl !== relatedBroadcaster.videoUrl) {
+                    const listItem = document.createElement('li');
+                    listItem.innerHTML = `
+                        <i class="fas fa-youtube"></i>
+                        `
+                    const aItem = document.createElement('a');
+                    const nameItem = document.createElement('strong')
+                    nameItem.innerHTML = `[${relatedBroadcaster.name}]&nbsp;`
+                    aItem.appendChild(nameItem);
+                    aItem.href = '#';
+                    aItem['data-video-url'] = `"${relatedBroadcaster.videoUrl}"`
+                    listItem.appendChild(aItem);
+                    relatedListContainer.appendChild(listItem);
+
+                    // 현재 재생 중인 영상이면 재생 시간 실시간 업데이트
+                    const timeDisplay = document.createElement('span');
+                    listItem.appendChild(timeDisplay);
+
+                    const btn = document.createElement("button");
+                    btn.innerHTML = '1';
+                    btn.onclick = function(){
+                        player.seekTo(5);
+                    }
+                    listItem.appendChild(btn);
+
+                    setInterval(() => {
+                        const currentTime = Math.floor(player.getCurrentTime());
+                        const deltaTime = curVideoStartTS - relatedBroadcaster.startTS;
+
+                        // Date 객체로 변환
+                        const date1 = new Date(curVideoStartTS);
+                        const date2 = new Date(relatedBroadcaster.startTS);
+
+                        // 두 날짜 객체 간의 차이 계산 (밀리초 단위)
+                        var timeDiff_ms = date2 - date1;
+                        timeDiff_ms += currentTime*1000;
+                        
+                        // 차이를 일, 시간, 분, 초로 변환
+                        const hourDiff = Math.floor((timeDiff_ms % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                        const minDiff = Math.floor((timeDiff_ms % (1000 * 60 * 60)) / (1000 * 60));
+                        const secDiff = Math.floor((timeDiff_ms % (1000 * 60)) / 1000);
+
+                        // curHour = Math.floor(currentTime / 3600);
+                        // curMin = Math.floor((currentTime-curHour*3600) / 60);
+                        // curSec = currentTime % 60;
+
+                        // 각 숫자를 2자리로 패딩하여 HH:MM:SS 형식으로 출력
+                        const formattedDifference = [
+                        hourDiff.toString().padStart(2, '0'),
+                        minDiff.toString().padStart(2, '0'),
+                        secDiff.toString().padStart(2, '0')
+                        ].join(':');
+                        timeDisplay.textContent = formattedDifference
+                        // timeDisplay.textContent += ` (+${currentTime})`;
+
+                        aItem.onclick = function() {
+                            loadVideo(
+                                `${relatedBroadcaster.videoUrl}`,
+                                `${relatedBroadcaster.startTS}`,
+                                `${Math.floor(timeDiff_ms / 1000)}`
+                            );
+                        };
+                        // aItem.onclick=`"loadVideo('${relatedBroadcaster.videoUrl}', '${relatedBroadcaster.startTS}', ${relatedBroadcaster.timestamp+hourDiff*3600+minDiff*60+secDiff})"`
+                    }, 1000);
+                }
+            });
+        }
+        // YouTube Video URL에서 Video ID를 추출하는 함수
+        function getVideoId(videoUrl) {
+            const videoIdMatch = videoUrl.match(/\/embed\/([^?]+)/);
+            const videoId = (videoIdMatch && videoIdMatch[1]) ? videoIdMatch[1] : '';
+            return videoId;
+        }
+    };
     </script>
 </body>
 </html>
